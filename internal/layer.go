@@ -55,3 +55,13 @@ func (l *Layer) PainLine(x1, y1, x2, y2 int) {
 		}
 	}
 }
+
+// Generate a 2d slice of uint8, each representing a cell
+// given the size of the tcell screen
+func NewPixelSlice(width, height int) *[][]uint8 {
+	pixels := make([][]uint8, width)
+	for i := range pixels {
+		pixels[i] = make([]uint8, height)
+	}
+	return &pixels
+}

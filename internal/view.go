@@ -24,11 +24,8 @@ func View() {
 	s.Clear()
 
 	width, height := s.Size()
-	pixels := make([][]uint8, width)
-	for i := range pixels {
-		pixels[i] = make([]uint8, height)
-	}
-	layer := Layer{Pixels: &pixels, screen: s}
+	pixels := NewPixelSlice(width, height)
+	layer := Layer{Pixels: pixels, screen: s}
 	layer.PainLine(0, 0, 30, 30)
 
 	quit := func() {
@@ -57,5 +54,22 @@ func View() {
 		layer.Draw(boxStyle)
 		// Update screen
 		s.Show()
+
+		// Poll event
+		ev := s.PollEvent()
+
+		// Process event
+		switch ev := ev.(type) {
+		case *tcell.EventResize:
+			s.Sync()
+		case *tcell.EventKey:
+			if ev.Key() == tcell.KeyEscape || ev.Key() == tcell.KeyCtrlC {
+				return
+			} else if ev.Key() == tcell.KeyCtrlL {
+				s.Sync()
+			} else if ev.Rune() == 'C' || ev.Rune() == 'c' {
+				s.Clear()
+			}
+		}
 	}
 }
