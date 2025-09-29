@@ -1,9 +1,12 @@
 package internal
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/gdamore/tcell/v2"
+	"github.com/paulmach/orb"
+	"github.com/paulmach/orb/project"
 )
 
 func View() {
@@ -26,7 +29,20 @@ func View() {
 	width, height := s.Size()
 	pixels := NewPixelSlice(width, height)
 	layer := Layer{Pixels: pixels, screen: s}
-	layer.PainLine(0, 0, 30, 30)
+
+	fc := ReadGeoJSON("./gz_2010_us_040_00_20m.json")
+	minnesotaWGS84 := GetFeature("Minnesota", fc).Geometry.(orb.Polygon)
+	//TODO: support multi-polygons
+	minnsotaMerc := project.Polygon(minnesotaWGS84, project.WGS84.ToMercator)
+
+	topLeft := orb.Point{-101.54149625952375, 49.31848896184871}
+	bottomRight := orb.Point{-88.52181788184106, 42.54514923415394}
+	boundWGS84 := orb.MultiPoint{topLeft, bottomRight}.Bound()
+	boundMerc := project.Bound(boundWGS84, project.WGS84.ToMercator)
+
+	//TODO: decide the bound based on the aspect ratio of the screen
+	minnesotaFit := FitToScreen(minnsotaMerc, boundMerc, width*2, height*4)
+	layer.DrawPolygon(minnesotaFit)
 
 	quit := func() {
 		// You have to catch panics in a defer, clean up, and
@@ -37,6 +53,7 @@ func View() {
 		if maybePanic != nil {
 			panic(maybePanic)
 		}
+		fmt.Println(s.Size())
 	}
 	defer quit()
 

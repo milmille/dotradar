@@ -1,7 +1,10 @@
 package internal
 
 import (
+	"math"
+
 	"github.com/gdamore/tcell/v2"
+	"github.com/paulmach/orb"
 )
 
 const X_MULT = 2
@@ -29,7 +32,7 @@ func (l *Layer) Draw(style tcell.Style) {
 	}
 }
 
-func (l *Layer) PainLine(x1, y1, x2, y2 int) {
+func (l *Layer) PaintLine(x1, y1, x2, y2 int) {
 	if x1 == x2 {
 		// vertical line case
 		if y1 > y2 {
@@ -48,10 +51,21 @@ func (l *Layer) PainLine(x1, y1, x2, y2 int) {
 			x2, y2 = x1, y1
 			x1, y1 = xTemp, yTemp
 		}
-		slope := (y2 - y1) / (x2 - x1)
+		slope := float64(y2-y1) / float64(x2-x1)
 		for x := x1; x <= x2; x++ {
-			y := slope*(x-x1) + y1
-			l.PaintPixel(x, y)
+			y := math.Round(slope*float64(x-x1) + float64(y1))
+			l.PaintPixel(x, int(y))
+		}
+	}
+}
+
+// draw the polygon on the screen assuming in screen coordinates
+func (l *Layer) DrawPolygon(polygon orb.Polygon) {
+	for _, ring := range polygon {
+		for j := 0; j < len(ring)-1; j++ {
+			point1 := ring[j]
+			point2 := ring[j+1]
+			l.PaintLine(int(point1[0]), int(point1[1]), int(point2[0]), int(point2[1]))
 		}
 	}
 }
