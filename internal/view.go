@@ -11,7 +11,7 @@ import (
 
 func View() {
 	defStyle := tcell.StyleDefault.Background(tcell.ColorReset).Foreground(tcell.ColorReset)
-	boxStyle := tcell.StyleDefault.Foreground(tcell.ColorWhite).Background(tcell.ColorPurple)
+	drawStyle := tcell.StyleDefault.Foreground(tcell.ColorWhite).Background(tcell.ColorReset)
 
 	// Initialize screen
 	s, err := tcell.NewScreen()
@@ -68,7 +68,7 @@ func View() {
 
 	// Event loop
 	for {
-		layer.Draw(boxStyle)
+		layer.Draw(drawStyle)
 		// Update screen
 		s.Show()
 
