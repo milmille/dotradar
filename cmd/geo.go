@@ -9,6 +9,7 @@ import (
 	"log"
 	"math"
 	"os"
+	"strings"
 
 	"github.com/paulmach/orb"
 	"github.com/paulmach/orb/geojson"
@@ -88,9 +89,9 @@ func unmarshal() {
 }
 
 func getFeature(name string, fc *geojson.FeatureCollection) *geojson.Feature {
-
+	searchStr := strings.ToLower(name)
 	for _, feature := range fc.Features {
-		if feature.Properties.MustString("NAME") == name {
+		if strings.ToLower(feature.Properties.MustString("NAME")) == searchStr {
 			return feature
 		}
 	}

@@ -30,7 +30,10 @@ import (
 	"github.com/spf13/viper"
 )
 
-var cfgFile string
+var (
+	cfgFile string
+	state   string
+)
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -40,7 +43,7 @@ var rootCmd = &cobra.Command{
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	Run: func(cmd *cobra.Command, args []string) {
-		internal.View()
+		internal.View(state)
 	},
 }
 
@@ -61,6 +64,7 @@ func init() {
 	// will be global for your application.
 
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.dotradar.yaml)")
+	rootCmd.Flags().StringVarP(&state, "state", "s", "Michigan", "name of the state to show")
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.

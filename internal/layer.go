@@ -60,12 +60,14 @@ func (l *Layer) PaintLine(x1, y1, x2, y2 int) {
 }
 
 // draw the polygon on the screen assuming in screen coordinates
-func (l *Layer) DrawPolygon(polygon orb.Polygon) {
-	for _, ring := range polygon {
-		for j := 0; j < len(ring)-1; j++ {
-			point1 := ring[j]
-			point2 := ring[j+1]
-			l.PaintLine(int(point1[0]), int(point1[1]), int(point2[0]), int(point2[1]))
+func (l *Layer) DrawPolygon(multiPolygon orb.MultiPolygon) {
+	for _, polygon := range multiPolygon {
+		for _, ring := range polygon {
+			for j := 0; j < len(ring)-1; j++ {
+				point1 := ring[j]
+				point2 := ring[j+1]
+				l.PaintLine(int(point1[0]), int(point1[1]), int(point2[0]), int(point2[1]))
+			}
 		}
 	}
 }
