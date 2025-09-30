@@ -6,6 +6,7 @@ import (
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/paulmach/orb"
+	"github.com/paulmach/orb/clip"
 	"github.com/paulmach/orb/project"
 )
 
@@ -45,18 +46,33 @@ func View(stateStr string) {
 
 	fc := ReadGeoJSON("./gz_2010_us_040_00_20m.json")
 	geometry := GetFeature(stateStr, fc).Geometry
-	var state orb.MultiPolygon
+	var centerState orb.MultiPolygon
 	if multiPolygon, ok := geometry.(orb.MultiPolygon); ok {
-		state = multiPolygon
+		centerState = multiPolygon
 	} else if polygon, ok := geometry.(orb.Polygon); ok {
-		state = orb.MultiPolygon{polygon}
+		centerState = orb.MultiPolygon{polygon}
 	}
-	stateMerc := project.MultiPolygon(state, project.WGS84.ToMercator)
+	centerStateMerc := project.MultiPolygon(centerState.Clone(), project.WGS84.ToMercator)
 
-	bound := FindBound(stateMerc, width*2, height*4, 5000)
+	bound := FindBound(centerStateMerc, width*2, height*4, 5000)
 
-	minnesotaFit := FitToScreen(stateMerc, bound, width*2, height*4)
-	layer.DrawPolygon(minnesotaFit)
+	for _, feature := range fc.Features {
+		var state orb.MultiPolygon
+		if multiPolygon, ok := feature.Geometry.(orb.MultiPolygon); ok {
+			state = multiPolygon
+		} else if polygon, ok := feature.Geometry.(orb.Polygon); ok {
+			state = orb.MultiPolygon{polygon}
+		}
+		stateMerc := project.MultiPolygon(state, project.WGS84.ToMercator)
+
+		stateClipped := clip.MultiPolygon(bound, stateMerc)
+		if !stateClipped.Bound().IsEmpty() {
+			stateFit := FitToScreen(stateClipped, bound, width*2, height*4)
+			layer.DrawPolygon(stateFit)
+		} else {
+			fmt.Println("EMPTY!!!")
+		}
+	}
 
 	// Here's how to get the screen size when you need it.
 	// xmax, ymax := s.Size()

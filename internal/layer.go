@@ -41,8 +41,8 @@ func (l *Layer) PaintLine(x1, y1, x2, y2 int) {
 			y2 = y1
 			y1 = yTemp
 		}
-		for y := y1; y <= y2; y++ {
-			l.PaintPixel(x1, y)
+		for y := y1; y < y2; y++ {
+			l.PaintPixel(x1-1, y)
 		}
 	} else {
 		if x1 > x2 {
@@ -52,8 +52,8 @@ func (l *Layer) PaintLine(x1, y1, x2, y2 int) {
 			x1, y1 = xTemp, yTemp
 		}
 		slope := float64(y2-y1) / float64(x2-x1)
-		for x := x1; x <= x2; x++ {
-			y := math.Round(slope*float64(x-x1) + float64(y1))
+		for x := x1; x < x2; x++ {
+			y := math.Round(slope*float64(x-x1)+float64(y1)) - 1
 			l.PaintPixel(x, int(y))
 		}
 	}
