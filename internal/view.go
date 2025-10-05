@@ -1,7 +1,6 @@
 package internal
 
 import (
-	"fmt"
 	"log"
 
 	"github.com/gdamore/tcell/v2"
@@ -36,7 +35,6 @@ func View(stateStr string) {
 		if maybePanic != nil {
 			panic(maybePanic)
 		}
-		fmt.Println(s.Size())
 	}
 	defer quit()
 
