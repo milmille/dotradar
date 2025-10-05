@@ -64,7 +64,7 @@ func init() {
 	// will be global for your application.
 
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.dotradar.yaml)")
-	rootCmd.Flags().StringVarP(&state, "state", "s", "Michigan", "name of the state to show")
+	rootCmd.PersistentFlags().StringVarP(&state, "state", "s", "Michigan", "name of the state to show")
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.

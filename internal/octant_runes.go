@@ -1,7 +1,7 @@
 package internal
 
 var OctantRunes = []rune{
-	0xA0,
+	' ',
 	0x1CEA8,
 	0x1CEAB,
 	0x1FB82,

@@ -42,7 +42,7 @@ func View(stateStr string) {
 
 	width, height := s.Size()
 	pixels := NewPixelSlice(width, height)
-	layer := Layer{Pixels: pixels, screen: s}
+	layer := Layer{Pixels: pixels, XMultiplier: 2, YMultiplier: 4, screen: s}
 
 	fc := ReadGeoJSON("./gz_2010_us_040_00_20m.json")
 	geometry := GetFeature(stateStr, fc).Geometry
@@ -54,7 +54,9 @@ func View(stateStr string) {
 	}
 	centerStateMerc := project.MultiPolygon(centerState.Clone(), project.WGS84.ToMercator)
 
-	bound := FindBound(centerStateMerc, width*2, height*4, 5000)
+	bound := FindBound(centerStateMerc.Clone(), width*2, height*4, 5000)
+
+	image := GetMap(centerStateMerc.Clone(), width, height)
 
 	for _, feature := range fc.Features {
 		var state orb.MultiPolygon
@@ -68,11 +70,14 @@ func View(stateStr string) {
 		stateClipped := clip.MultiPolygon(bound, stateMerc)
 		if !stateClipped.Bound().IsEmpty() {
 			stateFit := FitToScreen(stateClipped, bound, width*2, height*4)
-			layer.DrawPolygon(stateFit)
-		} else {
-			fmt.Println("EMPTY!!!")
+			layer.DrawPolygon(stateFit, drawStyle)
 		}
 	}
+
+	imagePixels := NewPixelSlice(width, height)
+	imageLayer := Layer{Pixels: imagePixels, XMultiplier: 1, YMultiplier: 2, screen: s}
+
+	drawImage(imageLayer, image)
 
 	// Here's how to get the screen size when you need it.
 	// xmax, ymax := s.Size()
@@ -82,13 +87,13 @@ func View(stateStr string) {
 	// queue is LIFO, it has a limited length, and PostEvent() can
 	// return an error.
 	// s.PostEvent(tcell.NewEventKey(tcell.KeyRune, rune('a'), 0))
+	imageLayer.Draw()
+	layer.Draw()
+	s.Show()
+	// Update screen
 
 	// Event loop
 	for {
-		layer.Draw(drawStyle)
-		// Update screen
-		s.Show()
-
 		// Poll event
 		ev := s.PollEvent()
 
