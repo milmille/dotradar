@@ -2,6 +2,7 @@ package internal
 
 import (
 	"math"
+	"sync"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/paulmach/orb"
@@ -17,6 +18,7 @@ type Layer struct {
 	XMultiplier int
 	YMultiplier int
 	screen      tcell.Screen
+	mutex       sync.Mutex
 }
 
 const LOWER_HALF_BLOCK = 0b11110000
@@ -46,6 +48,8 @@ func (l *Layer) Draw() {
 }
 
 func (l *Layer) PaintPixelFromImage(x int, y int, color tcell.Color) {
+	l.mutex.Lock()
+	defer l.mutex.Unlock()
 	xCell := x / l.XMultiplier
 	yCell := y / l.YMultiplier
 	yMod := y % l.YMultiplier
@@ -97,6 +101,12 @@ func (l *Layer) DrawPolygon(multiPolygon orb.MultiPolygon, style tcell.Style) {
 			}
 		}
 	}
+}
+
+func (l *Layer) Clear() {
+	width, height := l.screen.Size()
+	pixels := NewPixelSlice(width, height)
+	l.Pixels = pixels
 }
 
 // Generate a 2d slice of uint8, each representing a cell

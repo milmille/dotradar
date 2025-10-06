@@ -9,7 +9,6 @@ import (
 
 	"github.com/paulmach/orb"
 	"github.com/paulmach/orb/geojson"
-	"github.com/paulmach/orb/planar"
 )
 
 // read in json file and return feature collection
@@ -57,12 +56,11 @@ func FitToScreen(multiPolygon orb.MultiPolygon, bound orb.Bound, width int, heig
 	return translatedMulti
 }
 
-func FindBound(multiPolygon orb.MultiPolygon, width, height, zoomFactor int) orb.Bound {
-	centroid, _ := planar.CentroidArea(multiPolygon)
-	left := centroid[0] - float64(width*zoomFactor/2)
-	top := centroid[1] - float64(height*zoomFactor/2)
-	right := centroid[0] + float64(width*zoomFactor/2)
-	bottom := centroid[1] + float64(height*zoomFactor/2)
+func FindBound(centerPoint orb.Point, width, height, zoomFactor int) orb.Bound {
+	left := centerPoint[0] - float64(width*zoomFactor/2)
+	top := centerPoint[1] - float64(height*zoomFactor/2)
+	right := centerPoint[0] + float64(width*zoomFactor/2)
+	bottom := centerPoint[1] + float64(height*zoomFactor/2)
 
 	return orb.MultiPoint{orb.Point{left, top}, orb.Point{right, bottom}}.Bound()
 }

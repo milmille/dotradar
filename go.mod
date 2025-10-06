@@ -5,7 +5,7 @@ go 1.23.0
 toolchain go1.24.7
 
 require (
-	github.com/davecgh/go-spew v1.1.1
+	github.com/bep/debounce v1.2.1
 	github.com/gdamore/tcell/v2 v2.7.4
 	github.com/paulmach/orb v0.12.0
 	github.com/spf13/cobra v1.10.1

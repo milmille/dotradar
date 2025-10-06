@@ -5,6 +5,8 @@ import (
 	"image"
 	"image/color"
 	"image/png"
+	"io"
+	"maps"
 	"net/http"
 	"net/url"
 
@@ -18,7 +20,7 @@ const HEIGHT_MULT = 2
 
 const NOAA_URL = "https://opengeo.ncep.noaa.gov/geoserver/conus/conus_bref_qcd/ows?"
 
-var urlParams = url.Values{
+var baseUrlParams = url.Values{
 	"service":     []string{"wms"},
 	"request":     []string{"GetMap"},
 	"layers":      []string{"conus_bref_qcd"},
@@ -27,9 +29,9 @@ var urlParams = url.Values{
 	"transparent": []string{"true"},
 }
 
-func GetMap(centerState orb.MultiPolygon, screenWidth, screenHeight int) image.Image {
+func GetMap(bound orb.Bound, screenWidth, screenHeight int) image.Image {
 
-	bound := FindBound(centerState, screenWidth*2, screenHeight*4, 5000)
+	urlParams := maps.Clone(baseUrlParams)
 
 	widthStr := fmt.Sprintf("%d", screenWidth*WIDTH_MULT)
 	heightStr := fmt.Sprintf("%d", screenHeight*HEIGHT_MULT)
@@ -48,15 +50,23 @@ func GetMap(centerState orb.MultiPolygon, screenWidth, screenHeight int) image.I
 	if err != nil {
 		fmt.Println("error sending request to noaa %v", err.Error())
 	}
+	if resp.Header.Get("content-type") != "image/png" {
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			fmt.Println("error reading response: %s", err.Error())
+		}
+		fmt.Println(string(body))
+		return nil
+	}
 
 	img, err := png.Decode(resp.Body)
 	if err != nil {
-		fmt.Println("error decoding image: %v", err.Error())
+		fmt.Println("error decoding image: %s", err.Error())
 	}
 	return img
 }
 
-func drawImage(layer Layer, image image.Image) {
+func drawImage(layer *Layer, image image.Image) {
 	for y := image.Bounds().Min.Y; y < image.Bounds().Max.Y; y++ {
 		for x := image.Bounds().Min.X; x < image.Bounds().Max.X; x++ {
 			newColor := color.NRGBAModel.Convert(image.At(x, y)).(color.NRGBA)

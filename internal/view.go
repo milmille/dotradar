@@ -2,16 +2,19 @@ package internal
 
 import (
 	"log"
+	"time"
 
+	"github.com/bep/debounce"
 	"github.com/gdamore/tcell/v2"
 	"github.com/paulmach/orb"
 	"github.com/paulmach/orb/clip"
+	"github.com/paulmach/orb/geojson"
+	"github.com/paulmach/orb/planar"
 	"github.com/paulmach/orb/project"
 )
 
 func View(stateStr string) {
 	defStyle := tcell.StyleDefault.Background(tcell.ColorReset).Foreground(tcell.ColorReset)
-	drawStyle := tcell.StyleDefault.Foreground(tcell.ColorWhite).Background(tcell.ColorReset)
 
 	// Initialize screen
 	s, err := tcell.NewScreen()
@@ -27,9 +30,6 @@ func View(stateStr string) {
 	s.Clear()
 
 	quit := func() {
-		// You have to catch panics in a defer, clean up, and
-		// re-raise them - otherwise your application can
-		// die without leaving any diagnostic trace.
 		maybePanic := recover()
 		s.Fini()
 		if maybePanic != nil {
@@ -51,46 +51,21 @@ func View(stateStr string) {
 		centerState = orb.MultiPolygon{polygon}
 	}
 	centerStateMerc := project.MultiPolygon(centerState.Clone(), project.WGS84.ToMercator)
-
-	bound := FindBound(centerStateMerc.Clone(), width*2, height*4, 5000)
-
-	image := GetMap(centerStateMerc.Clone(), width, height)
-
-	for _, feature := range fc.Features {
-		var state orb.MultiPolygon
-		if multiPolygon, ok := feature.Geometry.(orb.MultiPolygon); ok {
-			state = multiPolygon
-		} else if polygon, ok := feature.Geometry.(orb.Polygon); ok {
-			state = orb.MultiPolygon{polygon}
-		}
-		stateMerc := project.MultiPolygon(state, project.WGS84.ToMercator)
-
-		stateClipped := clip.MultiPolygon(bound, stateMerc)
-		if !stateClipped.Bound().IsEmpty() {
-			stateFit := FitToScreen(stateClipped, bound, width*2, height*4)
-			layer.DrawPolygon(stateFit, drawStyle)
-		}
-	}
+	startingCenter, _ := planar.CentroidArea(centerStateMerc)
 
 	imagePixels := NewPixelSlice(width, height)
 	imageLayer := Layer{Pixels: imagePixels, XMultiplier: 1, YMultiplier: 2, screen: s}
 
-	drawImage(imageLayer, image)
+	debounced := debounce.New(1000 * time.Millisecond)
+	xOffset := 0.0
+	yOffset := 0.0
+	zoomOffset := 0
 
-	// Here's how to get the screen size when you need it.
-	// xmax, ymax := s.Size()
-
-	// Here's an example of how to inject a keystroke where it will
-	// be picked up by the next PollEvent call.  Note that the
-	// queue is LIFO, it has a limited length, and PostEvent() can
-	// return an error.
-	// s.PostEvent(tcell.NewEventKey(tcell.KeyRune, rune('a'), 0))
+	renderRadar(startingCenter, xOffset, yOffset, zoomOffset, width, height, &imageLayer)
+	renderBorders(startingCenter, xOffset, yOffset, zoomOffset, width, height, fc.Features, &layer)
 	imageLayer.Draw()
 	layer.Draw()
 	s.Show()
-	// Update screen
-
-	// Event loop
 	for {
 		// Poll event
 		ev := s.PollEvent()
@@ -101,12 +76,149 @@ func View(stateStr string) {
 			s.Sync()
 		case *tcell.EventKey:
 			if ev.Key() == tcell.KeyEscape || ev.Key() == tcell.KeyCtrlC {
+				// quit
 				return
-			} else if ev.Key() == tcell.KeyCtrlL {
-				s.Sync()
-			} else if ev.Rune() == 'C' || ev.Rune() == 'c' {
+			} else if ev.Rune() == 'c' || ev.Rune() == 'C' {
+				// clear
 				s.Clear()
+			} else if ev.Rune() == 'd' || ev.Rune() == 'D' {
+				// zoom in
+				s.Clear()
+				layer.Clear()
+				imageLayer.Clear()
+				zoomOffset -= 1000
+				renderBorders(startingCenter, xOffset, yOffset, zoomOffset, width, height, fc.Features, &layer)
+				f := func() {
+					s.Clear()
+					renderRadar(startingCenter, xOffset, yOffset, zoomOffset, width, height, &imageLayer)
+					imageLayer.Draw()
+					layer.Draw()
+					s.Show()
+				}
+				debounced(f)
+				imageLayer.Draw()
+				layer.Draw()
+				s.Show()
+			} else if ev.Rune() == 'u' || ev.Rune() == 'U' {
+				// zoom out
+				s.Clear()
+				layer.Clear()
+				imageLayer.Clear()
+				zoomOffset += 1000
+				renderBorders(startingCenter, xOffset, yOffset, zoomOffset, width, height, fc.Features, &layer)
+				f := func() {
+					s.Clear()
+					renderRadar(startingCenter, xOffset, yOffset, zoomOffset, width, height, &imageLayer)
+					imageLayer.Draw()
+					layer.Draw()
+					s.Show()
+				}
+				debounced(f)
+				imageLayer.Draw()
+				layer.Draw()
+				s.Show()
+			} else if ev.Rune() == 'l' || ev.Rune() == 'L' {
+				// right
+				s.Clear()
+				layer.Clear()
+				imageLayer.Clear()
+				xOffset += 100000
+				renderBorders(startingCenter, xOffset, yOffset, zoomOffset, width, height, fc.Features, &layer)
+				f := func() {
+					s.Clear()
+					renderRadar(startingCenter, xOffset, yOffset, zoomOffset, width, height, &imageLayer)
+					imageLayer.Draw()
+					layer.Draw()
+					s.Show()
+				}
+				debounced(f)
+				imageLayer.Draw()
+				layer.Draw()
+				s.Show()
+			} else if ev.Rune() == 'h' || ev.Rune() == 'H' {
+				// left
+				s.Clear()
+				layer.Clear()
+				imageLayer.Clear()
+				xOffset -= 100000
+				renderBorders(startingCenter, xOffset, yOffset, zoomOffset, width, height, fc.Features, &layer)
+				f := func() {
+					s.Clear()
+					renderRadar(startingCenter, xOffset, yOffset, zoomOffset, width, height, &imageLayer)
+					imageLayer.Draw()
+					layer.Draw()
+					s.Show()
+				}
+				debounced(f)
+				imageLayer.Draw()
+				layer.Draw()
+				s.Show()
+			} else if ev.Rune() == 'j' || ev.Rune() == 'J' {
+				// down
+				s.Clear()
+				layer.Clear()
+				imageLayer.Clear()
+				yOffset -= 100000
+				renderBorders(startingCenter, xOffset, yOffset, zoomOffset, width, height, fc.Features, &layer)
+				f := func() {
+					s.Clear()
+					renderRadar(startingCenter, xOffset, yOffset, zoomOffset, width, height, &imageLayer)
+					imageLayer.Draw()
+					layer.Draw()
+					s.Show()
+				}
+				debounced(f)
+				imageLayer.Draw()
+				layer.Draw()
+				s.Show()
+			} else if ev.Rune() == 'k' || ev.Rune() == 'K' {
+				// up
+				s.Clear()
+				layer.Clear()
+				imageLayer.Clear()
+				yOffset += 100000
+				renderBorders(startingCenter, xOffset, yOffset, zoomOffset, width, height, fc.Features, &layer)
+				f := func() {
+					s.Clear()
+					renderRadar(startingCenter, xOffset, yOffset, zoomOffset, width, height, &imageLayer)
+					imageLayer.Draw()
+					layer.Draw()
+					s.Show()
+				}
+				debounced(f)
+				imageLayer.Draw()
+				layer.Draw()
+				s.Show()
 			}
+
+		}
+	}
+}
+
+func renderRadar(startingCenter orb.Point, xOffset, yOffset float64, zoomOffset, width, height int, layer *Layer) {
+	newCenter := orb.Point{startingCenter[0] + xOffset, startingCenter[1] + yOffset}
+	bound := FindBound(newCenter, width*2, height*4, 5000+zoomOffset)
+	image := GetMap(bound, width, height)
+	drawImage(layer, image)
+}
+
+func renderBorders(startingCenter orb.Point, xOffset, yOffset float64, zoomOffset, width, height int, features []*geojson.Feature, layer *Layer) {
+	drawStyle := tcell.StyleDefault.Foreground(tcell.ColorWhite).Background(tcell.ColorReset)
+	newCenter := orb.Point{startingCenter[0] + xOffset, startingCenter[1] + yOffset}
+	bound := FindBound(newCenter, width*2, height*4, 5000+zoomOffset)
+	for _, feature := range features {
+		var state orb.MultiPolygon
+		if multiPolygon, ok := feature.Geometry.(orb.MultiPolygon); ok {
+			state = multiPolygon
+		} else if polygon, ok := feature.Geometry.(orb.Polygon); ok {
+			state = orb.MultiPolygon{polygon}
+		}
+		stateMerc := project.MultiPolygon(state.Clone(), project.WGS84.ToMercator)
+
+		stateClipped := clip.MultiPolygon(bound, stateMerc)
+		if !stateClipped.Bound().IsEmpty() {
+			stateFit := FitToScreen(stateClipped, bound, width*2, height*4)
+			layer.DrawPolygon(stateFit, drawStyle)
 		}
 	}
 }

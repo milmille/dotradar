@@ -11,6 +11,7 @@ import (
 
 	"github.com/milmille/dotradar/internal"
 	"github.com/paulmach/orb"
+	"github.com/paulmach/orb/planar"
 	"github.com/paulmach/orb/project"
 	"github.com/spf13/cobra"
 )
@@ -77,9 +78,12 @@ func getMap(state string) image.Image {
 	} else if polygon, ok := geometry.(orb.Polygon); ok {
 		centerState = orb.MultiPolygon{polygon}
 	}
-	centerStateMerc := project.MultiPolygon(centerState.Clone(), project.WGS84.ToMercator)
 
-	return internal.GetMap(centerStateMerc.Clone(), SCREEN_WIDTH, SCREEN_HEIGHT)
+	centerStateMerc := project.MultiPolygon(centerState.Clone(), project.WGS84.ToMercator)
+	startingCenter, _ := planar.CentroidArea(centerStateMerc)
+	bound := internal.FindBound(startingCenter, width*2, height*4, 5000)
+
+	return internal.GetMap(bound, SCREEN_WIDTH, SCREEN_HEIGHT)
 }
 
 func drawImage(image image.Image) {
