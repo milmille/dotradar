@@ -23,6 +23,8 @@ type Layer struct {
 
 const LOWER_HALF_BLOCK = 0b11110000
 
+//TODO: make a layer interface
+
 func (l *Layer) PaintPixel(x int, y int, style tcell.Style) {
 	xCell := x / l.XMultiplier
 	yCell := y / l.YMultiplier
