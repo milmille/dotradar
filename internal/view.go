@@ -7,8 +7,6 @@ import (
 	"github.com/bep/debounce"
 	"github.com/gdamore/tcell/v2"
 	"github.com/paulmach/orb"
-	"github.com/paulmach/orb/clip"
-	"github.com/paulmach/orb/geojson"
 	"github.com/paulmach/orb/planar"
 	"github.com/paulmach/orb/project"
 )
@@ -39,8 +37,6 @@ func View(stateStr string) {
 	defer quit()
 
 	width, height := s.Size()
-	pixels := NewPixelSlice(width, height)
-	layer := Layer{Pixels: pixels, XMultiplier: 2, YMultiplier: 4, screen: s}
 
 	fc := ReadGeoJSON("./gz_2010_us_040_00_20m.json")
 	geometry := GetFeature(stateStr, fc).Geometry
@@ -51,21 +47,17 @@ func View(stateStr string) {
 		centerState = orb.MultiPolygon{polygon}
 	}
 	centerStateMerc := project.MultiPolygon(centerState.Clone(), project.WGS84.ToMercator)
-	startingCenter, _ := planar.CentroidArea(centerStateMerc)
-
-	imagePixels := NewPixelSlice(width, height)
-	imageLayer := Layer{Pixels: imagePixels, XMultiplier: 1, YMultiplier: 2, screen: s}
+	center, _ := planar.CentroidArea(centerStateMerc)
 
 	debounced := debounce.New(1000 * time.Millisecond)
-	xOffset := 0.0
-	yOffset := 0.0
-	zoomOffset := 0
 
-	renderRadar(startingCenter, xOffset, yOffset, zoomOffset, width, height, &imageLayer)
-	renderBorders(startingCenter, xOffset, yOffset, zoomOffset, width, height, fc.Features, &layer)
-	imageLayer.Draw()
-	layer.Draw()
+	borders := NewBorderLayer(s, fc.Features, width, height)
+	radar := NewRadarLayer(s, width, height)
+	borders.Render(center, 5000, width, height)
+	radar.Render(center, 5000, width, height)
+	zoom := 5000
 	s.Show()
+
 	for {
 		// Poll event
 		ev := s.PollEvent()
@@ -82,143 +74,47 @@ func View(stateStr string) {
 				// clear
 				s.Clear()
 			} else if ev.Rune() == 'd' || ev.Rune() == 'D' {
-				// zoom in
-				s.Clear()
-				layer.Clear()
-				imageLayer.Clear()
-				zoomOffset -= 1000
-				renderBorders(startingCenter, xOffset, yOffset, zoomOffset, width, height, fc.Features, &layer)
-				f := func() {
-					s.Clear()
-					renderRadar(startingCenter, xOffset, yOffset, zoomOffset, width, height, &imageLayer)
-					imageLayer.Draw()
-					layer.Draw()
-					s.Show()
-				}
-				debounced(f)
-				imageLayer.Draw()
-				layer.Draw()
-				s.Show()
+				zoom -= 1000
+				stack(s, center, zoom, width, height, borders, radar, debounced)
 			} else if ev.Rune() == 'u' || ev.Rune() == 'U' {
 				// zoom out
-				s.Clear()
-				layer.Clear()
-				imageLayer.Clear()
-				zoomOffset += 1000
-				renderBorders(startingCenter, xOffset, yOffset, zoomOffset, width, height, fc.Features, &layer)
-				f := func() {
-					s.Clear()
-					renderRadar(startingCenter, xOffset, yOffset, zoomOffset, width, height, &imageLayer)
-					imageLayer.Draw()
-					layer.Draw()
-					s.Show()
-				}
-				debounced(f)
-				imageLayer.Draw()
-				layer.Draw()
-				s.Show()
+				zoom += 1000
+				stack(s, center, zoom, width, height, borders, radar, debounced)
+				// s.Show()
 			} else if ev.Rune() == 'l' || ev.Rune() == 'L' {
 				// right
-				s.Clear()
-				layer.Clear()
-				imageLayer.Clear()
-				xOffset += 100000
-				renderBorders(startingCenter, xOffset, yOffset, zoomOffset, width, height, fc.Features, &layer)
-				f := func() {
-					s.Clear()
-					renderRadar(startingCenter, xOffset, yOffset, zoomOffset, width, height, &imageLayer)
-					imageLayer.Draw()
-					layer.Draw()
-					s.Show()
-				}
-				debounced(f)
-				imageLayer.Draw()
-				layer.Draw()
-				s.Show()
+				center = orb.Point{center[0] + 100000, center[1]}
+				stack(s, center, zoom, width, height, borders, radar, debounced)
 			} else if ev.Rune() == 'h' || ev.Rune() == 'H' {
 				// left
-				s.Clear()
-				layer.Clear()
-				imageLayer.Clear()
-				xOffset -= 100000
-				renderBorders(startingCenter, xOffset, yOffset, zoomOffset, width, height, fc.Features, &layer)
-				f := func() {
-					s.Clear()
-					renderRadar(startingCenter, xOffset, yOffset, zoomOffset, width, height, &imageLayer)
-					imageLayer.Draw()
-					layer.Draw()
-					s.Show()
-				}
-				debounced(f)
-				imageLayer.Draw()
-				layer.Draw()
-				s.Show()
+				center = orb.Point{center[0] - 100000, center[1]}
+				stack(s, center, zoom, width, height, borders, radar, debounced)
 			} else if ev.Rune() == 'j' || ev.Rune() == 'J' {
 				// down
-				s.Clear()
-				layer.Clear()
-				imageLayer.Clear()
-				yOffset -= 100000
-				renderBorders(startingCenter, xOffset, yOffset, zoomOffset, width, height, fc.Features, &layer)
-				f := func() {
-					s.Clear()
-					renderRadar(startingCenter, xOffset, yOffset, zoomOffset, width, height, &imageLayer)
-					imageLayer.Draw()
-					layer.Draw()
-					s.Show()
-				}
-				debounced(f)
-				imageLayer.Draw()
-				layer.Draw()
-				s.Show()
+				center = orb.Point{center[0], center[1] - 100000}
+				stack(s, center, zoom, width, height, borders, radar, debounced)
 			} else if ev.Rune() == 'k' || ev.Rune() == 'K' {
 				// up
-				s.Clear()
-				layer.Clear()
-				imageLayer.Clear()
-				yOffset += 100000
-				renderBorders(startingCenter, xOffset, yOffset, zoomOffset, width, height, fc.Features, &layer)
-				f := func() {
-					s.Clear()
-					renderRadar(startingCenter, xOffset, yOffset, zoomOffset, width, height, &imageLayer)
-					imageLayer.Draw()
-					layer.Draw()
-					s.Show()
-				}
-				debounced(f)
-				imageLayer.Draw()
-				layer.Draw()
-				s.Show()
+				center = orb.Point{center[0], center[1] + 100000}
+				stack(s, center, zoom, width, height, borders, radar, debounced)
 			}
 
 		}
 	}
 }
 
-func renderRadar(startingCenter orb.Point, xOffset, yOffset float64, zoomOffset, width, height int, layer *Layer) {
-	newCenter := orb.Point{startingCenter[0] + xOffset, startingCenter[1] + yOffset}
-	bound := FindBound(newCenter, width*2, height*4, 5000+zoomOffset)
-	image := GetMap(bound, width, height)
-	drawImage(layer, image)
-}
-
-func renderBorders(startingCenter orb.Point, xOffset, yOffset float64, zoomOffset, width, height int, features []*geojson.Feature, layer *Layer) {
-	drawStyle := tcell.StyleDefault.Foreground(tcell.ColorWhite).Background(tcell.ColorReset)
-	newCenter := orb.Point{startingCenter[0] + xOffset, startingCenter[1] + yOffset}
-	bound := FindBound(newCenter, width*2, height*4, 5000+zoomOffset)
-	for _, feature := range features {
-		var state orb.MultiPolygon
-		if multiPolygon, ok := feature.Geometry.(orb.MultiPolygon); ok {
-			state = multiPolygon
-		} else if polygon, ok := feature.Geometry.(orb.Polygon); ok {
-			state = orb.MultiPolygon{polygon}
-		}
-		stateMerc := project.MultiPolygon(state.Clone(), project.WGS84.ToMercator)
-
-		stateClipped := clip.MultiPolygon(bound, stateMerc)
-		if !stateClipped.Bound().IsEmpty() {
-			stateFit := FitToScreen(stateClipped, bound, width*2, height*4)
-			layer.DrawPolygon(stateFit, drawStyle)
-		}
+func stack(s tcell.Screen, center orb.Point, zoom, width, height int, border, radar Layer, debounced func(f func())) {
+	s.Clear()
+	border.Clear()
+	radar.Clear()
+	border.Render(center, zoom, width, height)
+	f := func() {
+		s.Clear()
+		radar.Render(center, zoom, width, height)
+		border.Render(center, zoom, width, height)
+		s.Show()
 	}
+	debounced(f)
+	border.Render(center, zoom, width, height)
+	s.Show()
 }
