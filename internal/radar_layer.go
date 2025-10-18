@@ -14,6 +14,9 @@ import (
 	"github.com/paulmach/orb"
 )
 
+const RADAR_X_MULT = 1
+const RADAR_Y_MULT = 2
+
 const LOWER_HALF_BLOCK = 0b11110000
 
 const NOAA_URL = "https://opengeo.ncep.noaa.gov/geoserver/conus/conus_bref_qcd/ows?"
@@ -33,13 +36,11 @@ type radarLayerImpl struct {
 
 func NewRadarLayer(screen tcell.Screen, width, height int) Layer {
 	return &radarLayerImpl{
-		canvas: NewCanvas(screen, width, height, 1, 2),
+		canvas: NewCanvas(screen, width, height, RADAR_X_MULT, RADAR_Y_MULT),
 	}
 }
 
-func (rl *radarLayerImpl) Render(centerPoint orb.Point, zoom, width, height int) {
-	//TODO: need to abstract away the x/y mults in findBound
-	bound := FindBound(centerPoint, width*2, height*4, zoom)
+func (rl *radarLayerImpl) Render(bound orb.Bound, width, height int) {
 	image := rl.getMap(bound, width, height)
 	rl.drawRadarImage(image)
 	rl.canvas.Draw()

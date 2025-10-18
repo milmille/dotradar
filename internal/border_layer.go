@@ -10,6 +10,9 @@ import (
 	"github.com/paulmach/orb/project"
 )
 
+const BORDER_X_MULT = 2
+const BORDER_Y_MULT = 4
+
 type borderLayerImpl struct {
 	canvas   *Canvas
 	features []*geojson.Feature
@@ -17,16 +20,14 @@ type borderLayerImpl struct {
 
 func NewBorderLayer(screen tcell.Screen, features []*geojson.Feature, width, height int) Layer {
 	return &borderLayerImpl{
-		canvas:   NewCanvas(screen, width, height, 2, 4),
+		canvas:   NewCanvas(screen, width, height, BORDER_X_MULT, BORDER_Y_MULT),
 		features: features,
 	}
 }
 
-func (bl *borderLayerImpl) Render(centerPoint orb.Point, zoom, width, height int) {
+func (bl *borderLayerImpl) Render(bound orb.Bound, width, height int) {
 	drawStyle := tcell.StyleDefault.Foreground(tcell.ColorWhite).Background(tcell.ColorReset)
 
-	//TODO: need to abstract away the x/y mults in findBound
-	bound := FindBound(centerPoint, width*bl.canvas.XMultiplier, height*bl.canvas.YMultiplier, zoom)
 	for _, feature := range bl.features {
 		var state orb.MultiPolygon
 		if multiPolygon, ok := feature.Geometry.(orb.MultiPolygon); ok {
@@ -38,7 +39,7 @@ func (bl *borderLayerImpl) Render(centerPoint orb.Point, zoom, width, height int
 
 		stateClipped := clip.MultiPolygon(bound, stateMerc)
 		if !stateClipped.Bound().IsEmpty() {
-			stateFit := FitToScreen(stateClipped, bound, width*2, height*4)
+			stateFit := FitToScreen(stateClipped, bound, width*bl.canvas.XMultiplier, height*bl.canvas.YMultiplier)
 			bl.drawPolygon(stateFit, drawStyle)
 		}
 	}

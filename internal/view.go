@@ -53,9 +53,13 @@ func View(stateStr string) {
 
 	borders := NewBorderLayer(s, fc.Features, width, height)
 	radar := NewRadarLayer(s, width, height)
-	borders.Render(center, 5000, width, height)
-	radar.Render(center, 5000, width, height)
+
+	boundWidth, boundHeight := width*2, height*4
 	zoom := 5000
+	bound := FindBound(center, boundWidth, boundHeight, zoom)
+
+	radar.Render(bound, width, height)
+	borders.Render(bound, width, height)
 	s.Show()
 
 	for {
@@ -75,46 +79,52 @@ func View(stateStr string) {
 				s.Clear()
 			} else if ev.Rune() == 'd' || ev.Rune() == 'D' {
 				zoom -= 1000
-				stack(s, center, zoom, width, height, borders, radar, debounced)
+				bound := FindBound(center, boundWidth, boundHeight, zoom)
+				stack(s, bound, width, height, borders, radar, debounced)
 			} else if ev.Rune() == 'u' || ev.Rune() == 'U' {
 				// zoom out
 				zoom += 1000
-				stack(s, center, zoom, width, height, borders, radar, debounced)
+				bound := FindBound(center, boundWidth, boundHeight, zoom)
+				stack(s, bound, width, height, borders, radar, debounced)
 				// s.Show()
 			} else if ev.Rune() == 'l' || ev.Rune() == 'L' {
 				// right
 				center = orb.Point{center[0] + 100000, center[1]}
-				stack(s, center, zoom, width, height, borders, radar, debounced)
+				bound := FindBound(center, boundWidth, boundHeight, zoom)
+				stack(s, bound, width, height, borders, radar, debounced)
 			} else if ev.Rune() == 'h' || ev.Rune() == 'H' {
 				// left
 				center = orb.Point{center[0] - 100000, center[1]}
-				stack(s, center, zoom, width, height, borders, radar, debounced)
+				bound := FindBound(center, boundWidth, boundHeight, zoom)
+				stack(s, bound, width, height, borders, radar, debounced)
 			} else if ev.Rune() == 'j' || ev.Rune() == 'J' {
 				// down
 				center = orb.Point{center[0], center[1] - 100000}
-				stack(s, center, zoom, width, height, borders, radar, debounced)
+				bound := FindBound(center, boundWidth, boundHeight, zoom)
+				stack(s, bound, width, height, borders, radar, debounced)
 			} else if ev.Rune() == 'k' || ev.Rune() == 'K' {
 				// up
 				center = orb.Point{center[0], center[1] + 100000}
-				stack(s, center, zoom, width, height, borders, radar, debounced)
+				bound := FindBound(center, boundWidth, boundHeight, zoom)
+				stack(s, bound, width, height, borders, radar, debounced)
 			}
 
 		}
 	}
 }
 
-func stack(s tcell.Screen, center orb.Point, zoom, width, height int, border, radar Layer, debounced func(f func())) {
+func stack(s tcell.Screen, bound orb.Bound, width, height int, border, radar Layer, debounced func(f func())) {
 	s.Clear()
 	border.Clear()
 	radar.Clear()
-	border.Render(center, zoom, width, height)
+	border.Render(bound, width, height)
 	f := func() {
 		s.Clear()
-		radar.Render(center, zoom, width, height)
-		border.Render(center, zoom, width, height)
+		radar.Render(bound, width, height)
+		border.Render(bound, width, height)
 		s.Show()
 	}
 	debounced(f)
-	border.Render(center, zoom, width, height)
+	border.Render(bound, width, height)
 	s.Show()
 }

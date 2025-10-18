@@ -42,8 +42,8 @@ func FitToScreen(multiPolygon orb.MultiPolygon, bound orb.Bound, width int, heig
 			translatedRing := make([]orb.Point, len(ring))
 			for k, point := range ring {
 				translatedX := point[0] + (xOffset * -1)
-				// need to take the abs because the x direction is flipped
-				translatedY := math.Abs((point[1] + (yOffset * -1)))
+				// need to take the abs because the y direction is flipped
+				translatedY := math.Abs(point[1] + (yOffset * -1))
 				normalizedX := math.Round((translatedX / xMax) * float64(width))
 				normalizedY := math.Round((translatedY / yMax) * float64(height))
 				translatedRing[k] = orb.Point{normalizedX, normalizedY}
