@@ -23,6 +23,7 @@ package cmd
 
 import (
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/milmille/dotradar/internal"
@@ -43,7 +44,14 @@ var rootCmd = &cobra.Command{
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	Run: func(cmd *cobra.Command, args []string) {
-		internal.View(state)
+		file, err := os.OpenFile("dotradar.log", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer file.Close()
+		log.SetOutput(file)
+		logger := log.New(file, "", log.Lshortfile)
+		internal.View(state, logger)
 	},
 }
 

@@ -11,7 +11,8 @@ import (
 	"github.com/paulmach/orb/project"
 )
 
-func View(stateStr string) {
+func View(stateStr string, logger *log.Logger) {
+	logger.Println("starting!")
 	defStyle := tcell.StyleDefault.Background(tcell.ColorReset).Foreground(tcell.ColorReset)
 
 	// Initialize screen
