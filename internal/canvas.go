@@ -1,12 +1,24 @@
 package internal
 
-import "github.com/gdamore/tcell/v2"
+import (
+	"github.com/gdamore/tcell/v2"
+)
+
+const (
+	BOX_TOP_LEFT     = 0x256d
+	BOX_TOP_RIGHT    = 0x256e
+	BOX_BOTTOM_LEFT  = 0x2570
+	BOX_BOTTOM_RIGHT = 0x256f
+	BOX_VERTICAL     = 0x2502
+	BOX_HORIZONTAL   = 0x2500
+)
 
 type Canvas struct {
 	Cells       *[][]cell
 	XMultiplier int
 	YMultiplier int
 	screen      tcell.Screen
+	container   Container
 }
 
 type cell struct {
@@ -27,23 +39,34 @@ func (c *Canvas) PaintPixel(x int, y int, style tcell.Style) {
 }
 
 func (c *Canvas) Draw() {
+	width, height := c.screen.Size()
+	xMin := (width - c.container.Width) / 2
+	xMax := len(*c.Cells) + xMin
+	yMin := (height - c.container.Height) / 2
+	yMax := len((*c.Cells)[0]) + yMin
 	borderStyle := tcell.StyleDefault.Foreground(tcell.ColorWhite).Background(tcell.ColorReset)
-	for x := 0; x < len(*c.Cells); x++ {
-		for y := 0; y < len((*c.Cells)[x]); y++ {
-			if x == 0 && y == 0 {
-				c.screen.SetContent(x, y, 0x250c, nil, borderStyle)
-			} else if x == len(*c.Cells)-1 && y == 0 {
-				c.screen.SetContent(x, y, 0x2510, nil, borderStyle)
-			} else if x == 0 && y == len((*c.Cells)[x])-1 {
-				c.screen.SetContent(x, y, 0x2514, nil, borderStyle)
-			} else if x == len(*c.Cells)-1 && y == len((*c.Cells)[x])-1 {
-				c.screen.SetContent(x, y, 0x2518, nil, borderStyle)
-			} else if x == 0 || x == len(*c.Cells)-1 {
-				c.screen.SetContent(x, y, 0x2502, nil, borderStyle)
-			} else if y == 0 || y == len((*c.Cells)[x])-1 {
-				c.screen.SetContent(x, y, 0x2500, nil, borderStyle)
+	for x := xMin; x < xMax; x++ {
+		for y := yMin; y < yMax; y++ {
+			if x == xMin && y == yMin {
+				// top left
+				c.screen.SetContent(x, y, BOX_TOP_LEFT, nil, borderStyle)
+			} else if x == xMax-1 && y == yMin {
+				// top right
+				c.screen.SetContent(x, y, BOX_TOP_RIGHT, nil, borderStyle)
+			} else if x == xMin && y == yMax-1 {
+				// bottom left
+				c.screen.SetContent(x, y, BOX_BOTTOM_LEFT, nil, borderStyle)
+			} else if x == xMax-1 && y == yMax-1 {
+				// bottom right
+				c.screen.SetContent(x, y, BOX_BOTTOM_RIGHT, nil, borderStyle)
+			} else if x == xMin || x == xMax-1 {
+				// sides
+				c.screen.SetContent(x, y, BOX_VERTICAL, nil, borderStyle)
+			} else if y == yMin || y == yMax-1 {
+				// top bottom
+				c.screen.SetContent(x, y, BOX_HORIZONTAL, nil, borderStyle)
 			} else {
-				pixel := (*c.Cells)[x][y]
+				pixel := (*c.Cells)[x-xMin][y-yMin]
 				rune, _, _, _ := c.screen.GetContent(x, y)
 				if rune == ' ' {
 					c.screen.SetContent(x, y, OctantRunes[pixel.character], nil, pixel.style)
@@ -65,15 +88,16 @@ func (c *Canvas) Clear() {
 
 // Generate a 2d slice of uint8, each representing a cell
 // given the size of the tcell screen
-func NewCanvas(screen tcell.Screen, width, height, xMult, yMult int) *Canvas {
-	canvas := make([][]cell, width)
+func NewCanvas(screen tcell.Screen, container Container, xMult, yMult int) *Canvas {
+	canvas := make([][]cell, container.Width)
 	for i := range canvas {
-		canvas[i] = make([]cell, height)
+		canvas[i] = make([]cell, container.Height)
 	}
 	return &Canvas{
 		screen:      screen,
 		Cells:       &canvas,
 		XMultiplier: xMult,
 		YMultiplier: yMult,
+		container:   container,
 	}
 }
