@@ -34,14 +34,20 @@ type radarLayerImpl struct {
 	canvas *Canvas
 }
 
-func NewRadarLayer(screen tcell.Screen, container Container) Layer {
+func NewRadarLayer(screen tcell.Screen, container *Container) Layer {
 	return &radarLayerImpl{
 		canvas: NewCanvas(screen, container, RADAR_X_MULT, RADAR_Y_MULT),
 	}
 }
 
-func (rl *radarLayerImpl) Render(bound orb.Bound, container Container) {
-	image := rl.getMap(bound, container.Width, container.Height)
+func (rl *radarLayerImpl) Render(bound orb.Bound, container *Container) {
+	var width, height int
+	if container == nil {
+		width, height = rl.canvas.screen.Size()
+	} else {
+		width, height = container.Width, container.Height
+	}
+	image := rl.getMap(bound, width, height)
 	rl.drawRadarImage(image)
 	rl.canvas.Draw()
 }

@@ -57,15 +57,21 @@ func View(stateStr string, logger *log.Logger) {
 
 	debounced := debounce.New(1000 * time.Millisecond)
 
-	mapContainer := Container{
-		Width:  width - 4,
+	mapContainer := &Container{
+		Width:  width - 15,
 		Height: height - 30,
 	}
+	// var mapContainer *Container
 
 	borders := NewBorderLayer(s, fc.Features, mapContainer)
 	radar := NewRadarLayer(s, mapContainer)
 
-	boundWidth, boundHeight := mapContainer.Width*2, mapContainer.Height*4
+	var boundWidth, boundHeight int
+	if mapContainer == nil {
+		boundWidth, boundHeight = width*2, height*4
+	} else {
+		boundWidth, boundHeight = mapContainer.Width*2, mapContainer.Height*4
+	}
 	zoom := 5000
 	bound := FindBound(center, boundWidth, boundHeight, zoom)
 
@@ -125,7 +131,7 @@ func View(stateStr string, logger *log.Logger) {
 	}
 }
 
-func stack(s tcell.Screen, bound orb.Bound, container Container, border, radar Layer, debounced func(f func())) {
+func stack(s tcell.Screen, bound orb.Bound, container *Container, border, radar Layer, debounced func(f func())) {
 	s.Clear()
 	border.Clear()
 	radar.Clear()

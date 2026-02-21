@@ -18,7 +18,7 @@ type Canvas struct {
 	XMultiplier int
 	YMultiplier int
 	screen      tcell.Screen
-	container   Container
+	container   *Container
 }
 
 type cell struct {
@@ -40,10 +40,17 @@ func (c *Canvas) PaintPixel(x int, y int, style tcell.Style) {
 
 func (c *Canvas) Draw() {
 	width, height := c.screen.Size()
-	xMin := (width - c.container.Width) / 2
-	xMax := len(*c.Cells) + xMin
-	yMin := (height - c.container.Height) / 2
-	yMax := len((*c.Cells)[0]) + yMin
+	var xMin, xMax, yMin, yMax int
+	if c.container == nil {
+		xMin, yMin = 0, 0
+		xMax = width
+		yMax = height
+	} else {
+		xMin = (width - c.container.Width) / 2
+		xMax = len(*c.Cells) + xMin
+		yMin = (height - c.container.Height) / 2
+		yMax = len((*c.Cells)[0]) + yMin
+	}
 	borderStyle := tcell.StyleDefault.Foreground(tcell.ColorWhite).Background(tcell.ColorReset)
 	for x := xMin; x < xMax; x++ {
 		for y := yMin; y < yMax; y++ {
@@ -87,11 +94,16 @@ func (c *Canvas) Clear() {
 }
 
 // Generate a 2d slice of uint8, each representing a cell
-// given the size of the tcell screen
-func NewCanvas(screen tcell.Screen, container Container, xMult, yMult int) *Canvas {
-	canvas := make([][]cell, container.Width)
+func NewCanvas(screen tcell.Screen, container *Container, xMult, yMult int) *Canvas {
+	var width, height int
+	if container == nil {
+		width, height = screen.Size()
+	} else {
+		width, height = container.Width, container.Height
+	}
+	canvas := make([][]cell, width)
 	for i := range canvas {
-		canvas[i] = make([]cell, container.Height)
+		canvas[i] = make([]cell, height)
 	}
 	return &Canvas{
 		screen:      screen,

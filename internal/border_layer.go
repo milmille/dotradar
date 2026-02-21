@@ -18,14 +18,21 @@ type borderLayerImpl struct {
 	features []*geojson.Feature
 }
 
-func NewBorderLayer(screen tcell.Screen, features []*geojson.Feature, container Container) Layer {
+func NewBorderLayer(screen tcell.Screen, features []*geojson.Feature, container *Container) Layer {
 	return &borderLayerImpl{
 		canvas:   NewCanvas(screen, container, BORDER_X_MULT, BORDER_Y_MULT),
 		features: features,
 	}
 }
 
-func (bl *borderLayerImpl) Render(bound orb.Bound, container Container) {
+func (bl *borderLayerImpl) Render(bound orb.Bound, container *Container) {
+	var width, height int
+	if container == nil {
+		width, height = bl.canvas.screen.Size()
+	} else {
+		width, height = container.Width, container.Height
+	}
+
 	drawStyle := tcell.StyleDefault.Foreground(tcell.ColorWhite).Background(tcell.ColorReset)
 
 	for _, feature := range bl.features {
@@ -39,7 +46,7 @@ func (bl *borderLayerImpl) Render(bound orb.Bound, container Container) {
 
 		stateClipped := clip.MultiPolygon(bound, stateMerc)
 		if !stateClipped.Bound().IsEmpty() {
-			stateFit := FitToScreen(stateClipped, bound, container.Width*bl.canvas.XMultiplier, container.Height*bl.canvas.YMultiplier)
+			stateFit := FitToScreen(stateClipped, bound, width*bl.canvas.XMultiplier, height*bl.canvas.YMultiplier)
 			bl.drawPolygon(stateFit, drawStyle)
 		}
 	}
