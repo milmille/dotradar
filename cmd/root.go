@@ -34,6 +34,7 @@ import (
 var (
 	cfgFile string
 	state   string
+	showBox bool
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -51,7 +52,7 @@ var rootCmd = &cobra.Command{
 		defer file.Close()
 		log.SetOutput(file)
 		logger := log.New(file, "", log.Lshortfile)
-		internal.View(state, logger)
+		internal.View(state, logger, showBox)
 	},
 }
 
@@ -73,6 +74,7 @@ func init() {
 
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.dotradar.yaml)")
 	rootCmd.PersistentFlags().StringVarP(&state, "state", "s", "Michigan", "name of the state to show")
+	rootCmd.PersistentFlags().BoolVar(&showBox, "box", false, "Show the UI with borders around the elements")
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.

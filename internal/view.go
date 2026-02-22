@@ -2,6 +2,7 @@ package internal
 
 import (
 	"log"
+	"math"
 	"time"
 
 	"github.com/bep/debounce"
@@ -16,7 +17,9 @@ type Container struct {
 	Height int
 }
 
-func View(stateStr string, logger *log.Logger) {
+const HEIGHT_RATIO = 0.85
+
+func View(stateStr string, logger *log.Logger, showBox bool) {
 	logger.Println("starting!")
 	defStyle := tcell.StyleDefault.Background(tcell.ColorReset).Foreground(tcell.ColorReset)
 
@@ -57,11 +60,13 @@ func View(stateStr string, logger *log.Logger) {
 
 	debounced := debounce.New(1000 * time.Millisecond)
 
-	mapContainer := &Container{
-		Width:  width - 15,
-		Height: height - 30,
+	var mapContainer *Container
+	if showBox {
+		mapContainer = &Container{
+			Width:  width - 5,
+			Height: int(math.Round(float64(height) * HEIGHT_RATIO)),
+		}
 	}
-	// var mapContainer *Container
 
 	borders := NewBorderLayer(s, fc.Features, mapContainer)
 	radar := NewRadarLayer(s, mapContainer)

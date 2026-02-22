@@ -46,32 +46,41 @@ func (c *Canvas) Draw() {
 		xMax = width
 		yMax = height
 	} else {
+		// pin the container to the top, center horizontally
 		xMin = (width - c.container.Width) / 2
 		xMax = len(*c.Cells) + xMin
-		yMin = (height - c.container.Height) / 2
-		yMax = len((*c.Cells)[0]) + yMin
+		yMin = 1
+		yMax = len((*c.Cells)[0])
 	}
 	borderStyle := tcell.StyleDefault.Foreground(tcell.ColorWhite).Background(tcell.ColorReset)
 	for x := xMin; x < xMax; x++ {
 		for y := yMin; y < yMax; y++ {
-			if x == xMin && y == yMin {
-				// top left
-				c.screen.SetContent(x, y, BOX_TOP_LEFT, nil, borderStyle)
-			} else if x == xMax-1 && y == yMin {
-				// top right
-				c.screen.SetContent(x, y, BOX_TOP_RIGHT, nil, borderStyle)
-			} else if x == xMin && y == yMax-1 {
-				// bottom left
-				c.screen.SetContent(x, y, BOX_BOTTOM_LEFT, nil, borderStyle)
-			} else if x == xMax-1 && y == yMax-1 {
-				// bottom right
-				c.screen.SetContent(x, y, BOX_BOTTOM_RIGHT, nil, borderStyle)
-			} else if x == xMin || x == xMax-1 {
-				// sides
-				c.screen.SetContent(x, y, BOX_VERTICAL, nil, borderStyle)
-			} else if y == yMin || y == yMax-1 {
-				// top bottom
-				c.screen.SetContent(x, y, BOX_HORIZONTAL, nil, borderStyle)
+			if c.container != nil {
+				if x == xMin && y == yMin {
+					// top left
+					c.screen.SetContent(x, y, BOX_TOP_LEFT, nil, borderStyle)
+				} else if x == xMax-1 && y == yMin {
+					// top right
+					c.screen.SetContent(x, y, BOX_TOP_RIGHT, nil, borderStyle)
+				} else if x == xMin && y == yMax-1 {
+					// bottom left
+					c.screen.SetContent(x, y, BOX_BOTTOM_LEFT, nil, borderStyle)
+				} else if x == xMax-1 && y == yMax-1 {
+					// bottom right
+					c.screen.SetContent(x, y, BOX_BOTTOM_RIGHT, nil, borderStyle)
+				} else if x == xMin || x == xMax-1 {
+					// sides
+					c.screen.SetContent(x, y, BOX_VERTICAL, nil, borderStyle)
+				} else if y == yMin || y == yMax-1 {
+					// top bottom
+					c.screen.SetContent(x, y, BOX_HORIZONTAL, nil, borderStyle)
+				} else {
+					pixel := (*c.Cells)[x-xMin][y-yMin]
+					rune, _, _, _ := c.screen.GetContent(x, y)
+					if rune == ' ' {
+						c.screen.SetContent(x, y, OctantRunes[pixel.character], nil, pixel.style)
+					}
+				}
 			} else {
 				pixel := (*c.Cells)[x-xMin][y-yMin]
 				rune, _, _, _ := c.screen.GetContent(x, y)
