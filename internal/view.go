@@ -84,59 +84,92 @@ func View(stateStr string, logger *log.Logger, showBox bool) {
 	borders.Render(bound, mapContainer)
 	s.Show()
 
-	for {
-		// Poll event
-		ev := s.PollEvent()
-
-		// Process event
-		switch ev := ev.(type) {
-		case *tcell.EventResize:
-			s.Sync()
-		case *tcell.EventKey:
-			if ev.Key() == tcell.KeyEscape || ev.Key() == tcell.KeyCtrlC {
-				// quit
-				return
-			} else if ev.Rune() == 'c' || ev.Rune() == 'C' {
-				// clear
-				s.Clear()
-			} else if ev.Rune() == 'd' || ev.Rune() == 'D' {
-				// zoom in
-				zoom -= 1000
-				bound := FindBound(center, boundWidth, boundHeight, zoom)
-				stack(s, bound, mapContainer, borders, radar, debounced)
-			} else if ev.Rune() == 'u' || ev.Rune() == 'U' {
-				// zoom out
-				zoom += 1000
-				bound := FindBound(center, boundWidth, boundHeight, zoom)
-				stack(s, bound, mapContainer, borders, radar, debounced)
-				// s.Show()
-			} else if ev.Rune() == 'l' || ev.Rune() == 'L' {
-				// right
-				center = orb.Point{center[0] + 100000, center[1]}
-				bound := FindBound(center, boundWidth, boundHeight, zoom)
-				stack(s, bound, mapContainer, borders, radar, debounced)
-			} else if ev.Rune() == 'h' || ev.Rune() == 'H' {
-				// left
-				center = orb.Point{center[0] - 100000, center[1]}
-				bound := FindBound(center, boundWidth, boundHeight, zoom)
-				stack(s, bound, mapContainer, borders, radar, debounced)
-			} else if ev.Rune() == 'j' || ev.Rune() == 'J' {
-				// down
-				center = orb.Point{center[0], center[1] - 100000}
-				bound := FindBound(center, boundWidth, boundHeight, zoom)
-				stack(s, bound, mapContainer, borders, radar, debounced)
-			} else if ev.Rune() == 'k' || ev.Rune() == 'K' {
-				// up
-				center = orb.Point{center[0], center[1] + 100000}
-				bound := FindBound(center, boundWidth, boundHeight, zoom)
-				stack(s, bound, mapContainer, borders, radar, debounced)
+	ticker := time.NewTicker(500 * time.Millisecond)
+	tickerDone := make(chan bool)
+	mainDone := make(chan bool)
+	go func() {
+		throbberToggle := false
+		for {
+			select {
+			case <-tickerDone:
+				return // Exit the goroutine when done signal is received
+			case <-ticker.C:
+				// Perform the periodic task here
+				if throbberToggle {
+					s.SetContent(15, mapContainer.Height+5, '|', nil, tcell.StyleDefault.Foreground(tcell.ColorWhite).Background(tcell.ColorReset))
+				} else {
+					s.SetContent(15, mapContainer.Height+5, '-', nil, tcell.StyleDefault.Foreground(tcell.ColorWhite).Background(tcell.ColorReset))
+				}
+				throbberToggle = !throbberToggle
+				s.Show()
 			}
-
 		}
-	}
+	}()
+
+	go func(mainDone chan bool) {
+		for {
+			// Poll event
+			ev := s.PollEvent()
+
+			// Process event
+			switch ev := ev.(type) {
+			case *tcell.EventResize:
+				s.Sync()
+			case *tcell.EventKey:
+				if ev.Key() == tcell.KeyEscape || ev.Key() == tcell.KeyCtrlC {
+					// quit
+					return
+				} else if ev.Rune() == 'c' || ev.Rune() == 'C' {
+					// clear
+					s.Clear()
+				} else if ev.Rune() == 'd' || ev.Rune() == 'D' {
+					// zoom in
+					zoom -= 1000
+					bound := FindBound(center, boundWidth, boundHeight, zoom)
+					stack(s, bound, mapContainer, borders, radar, debounced)
+				} else if ev.Rune() == 'u' || ev.Rune() == 'U' {
+					// zoom out
+					zoom += 1000
+					bound := FindBound(center, boundWidth, boundHeight, zoom)
+					stack(s, bound, mapContainer, borders, radar, debounced)
+					// s.Show()
+				} else if ev.Rune() == 'l' || ev.Rune() == 'L' {
+					// right
+					center = orb.Point{center[0] + 100000, center[1]}
+					bound := FindBound(center, boundWidth, boundHeight, zoom)
+					stack(s, bound, mapContainer, borders, radar, debounced)
+				} else if ev.Rune() == 'h' || ev.Rune() == 'H' {
+					// left
+					center = orb.Point{center[0] - 100000, center[1]}
+					bound := FindBound(center, boundWidth, boundHeight, zoom)
+					stack(s, bound, mapContainer, borders, radar, debounced)
+				} else if ev.Rune() == 'j' || ev.Rune() == 'J' {
+					// down
+					center = orb.Point{center[0], center[1] - 100000}
+					bound := FindBound(center, boundWidth, boundHeight, zoom)
+					stack(s, bound, mapContainer, borders, radar, debounced)
+				} else if ev.Rune() == 'k' || ev.Rune() == 'K' {
+					// up
+					center = orb.Point{center[0], center[1] + 100000}
+					bound := FindBound(center, boundWidth, boundHeight, zoom)
+					stack(s, bound, mapContainer, borders, radar, debounced)
+				} else if ev.Rune() == 'q' || ev.Rune() == 'Q' {
+					mainDone <- true
+				}
+
+			}
+		}
+	}(mainDone)
+
+	// TODO: handle signals correctly
+	<-mainDone
+	tickerDone <- true
+	ticker.Stop()
 }
 
 func stack(s tcell.Screen, bound orb.Bound, container *Container, border, radar Layer, debounced func(f func())) {
+	// TODO: s.Clear is clearing the whole screen, should write an implementation to only clear the map container
+	// to prevent clearing other parts of the UI
 	s.Clear()
 	border.Clear()
 	radar.Clear()

@@ -90,6 +90,43 @@ func (c *Canvas) Draw() {
 			}
 		}
 	}
+	c.DrawToolbar()
+}
+
+func (c *Canvas) DrawToolbar() {
+	borderStyle := tcell.StyleDefault.Foreground(tcell.ColorWhite).Background(tcell.ColorReset)
+	width, height := c.screen.Size()
+	if c.container == nil {
+		return
+	}
+	xMin := (width - c.container.Width) / 2
+	xMax := len(*c.Cells) + xMin
+	yMin := len((*c.Cells)[0])
+	yMax := height
+
+	for x := xMin; x < xMax; x++ {
+		for y := yMin; y < yMax; y++ {
+			if x == xMin && y == yMin {
+				// top left
+				c.screen.SetContent(x, y, BOX_TOP_LEFT, nil, borderStyle)
+			} else if x == xMax-1 && y == yMin {
+				// top right
+				c.screen.SetContent(x, y, BOX_TOP_RIGHT, nil, borderStyle)
+			} else if x == xMin && y == yMax-1 {
+				// bottom left
+				c.screen.SetContent(x, y, BOX_BOTTOM_LEFT, nil, borderStyle)
+			} else if x == xMax-1 && y == yMax-1 {
+				// bottom right
+				c.screen.SetContent(x, y, BOX_BOTTOM_RIGHT, nil, borderStyle)
+			} else if x == xMin || x == xMax-1 {
+				// sides
+				c.screen.SetContent(x, y, BOX_VERTICAL, nil, borderStyle)
+			} else if y == yMin || y == yMax-1 {
+				// top bottom
+				c.screen.SetContent(x, y, BOX_HORIZONTAL, nil, borderStyle)
+			}
+		}
+	}
 }
 
 func (c *Canvas) Clear() {
