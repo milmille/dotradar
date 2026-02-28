@@ -58,7 +58,7 @@ func View(stateStr string, logger *log.Logger, showBox bool) {
 	centerStateMerc := project.MultiPolygon(centerState.Clone(), project.WGS84.ToMercator)
 	center, _ := planar.CentroidArea(centerStateMerc)
 
-	debounced := debounce.New(1000 * time.Millisecond)
+	debounced := debounce.New(500 * time.Millisecond)
 
 	var mapContainer *Container
 	if showBox {
@@ -81,26 +81,36 @@ func View(stateStr string, logger *log.Logger, showBox bool) {
 	bound := FindBound(center, boundWidth, boundHeight, zoom)
 
 	radar.Render(bound, mapContainer)
+	s.Show()
 	borders.Render(bound, mapContainer)
 	s.Show()
 
-	ticker := time.NewTicker(500 * time.Millisecond)
+	ticker := time.NewTicker(1 * time.Second)
 	tickerDone := make(chan bool)
 	mainDone := make(chan bool)
 	go func() {
-		throbberToggle := false
+		index := 0
+		forward := true
 		for {
 			select {
 			case <-tickerDone:
-				return // Exit the goroutine when done signal is received
+				return
 			case <-ticker.C:
-				// Perform the periodic task here
-				if throbberToggle {
-					s.SetContent(15, mapContainer.Height+5, '|', nil, tcell.StyleDefault.Foreground(tcell.ColorWhite).Background(tcell.ColorReset))
+				s.SetContent(15+index, mapContainer.Height+5, '|', nil, tcell.StyleDefault.Foreground(tcell.ColorWhite).Background(tcell.ColorReset))
+				if forward {
+					s.SetContent(15+(index-1), mapContainer.Height+5, ' ', nil, tcell.StyleDefault.Foreground(tcell.ColorWhite).Background(tcell.ColorReset))
+					index++
 				} else {
-					s.SetContent(15, mapContainer.Height+5, '-', nil, tcell.StyleDefault.Foreground(tcell.ColorWhite).Background(tcell.ColorReset))
+					s.SetContent(15+(index+1), mapContainer.Height+5, ' ', nil, tcell.StyleDefault.Foreground(tcell.ColorWhite).Background(tcell.ColorReset))
+					index--
 				}
-				throbberToggle = !throbberToggle
+				if index == 6 {
+					forward = false
+					index -= 2
+				} else if index == -1 {
+					forward = true
+					index += 2
+				}
 				s.Show()
 			}
 		}
@@ -170,12 +180,10 @@ func View(stateStr string, logger *log.Logger, showBox bool) {
 func stack(s tcell.Screen, bound orb.Bound, container *Container, border, radar Layer, debounced func(f func())) {
 	// TODO: s.Clear is clearing the whole screen, should write an implementation to only clear the map container
 	// to prevent clearing other parts of the UI
-	s.Clear()
 	border.Clear()
 	radar.Clear()
-	border.Render(bound, container)
 	f := func() {
-		s.Clear()
+		border.Clear()
 		radar.Render(bound, container)
 		border.Render(bound, container)
 		s.Show()

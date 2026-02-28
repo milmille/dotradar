@@ -137,6 +137,25 @@ func (c *Canvas) Clear() {
 		cells[i] = make([]cell, height)
 	}
 	c.Cells = &cells
+	clearStyle := tcell.StyleDefault.Foreground(tcell.ColorWhite).Background(tcell.ColorReset)
+	width, height = c.screen.Size()
+	var xMin, xMax, yMin, yMax int
+	if c.container == nil {
+		xMin, yMin = 0, 0
+		xMax = width
+		yMax = height
+	} else {
+		// pin the container to the top, center horizontally
+		xMin = (width - c.container.Width) / 2
+		xMax = len(*c.Cells) + xMin
+		yMin = 1
+		yMax = len((*c.Cells)[0])
+	}
+	for x := xMin; x < xMax; x++ {
+		for y := yMin; y < yMax; y++ {
+			c.screen.SetContent(x, y, ' ', nil, clearStyle)
+		}
+	}
 }
 
 // Generate a 2d slice of uint8, each representing a cell
